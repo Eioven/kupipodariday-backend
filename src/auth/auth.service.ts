@@ -1,9 +1,12 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { QueryFailedError } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { User } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
+
+const PG_UNIQUE_VIOLATION = '23505';
 
 @Injectable()
 export class AuthService {
@@ -13,31 +16,29 @@ export class AuthService {
   ) {}
 
   async signup(createUserDto: CreateUserDto) {
-    // Check if user already exists
-    const existingUserByEmail = await this.usersService.findByEmail(
-      createUserDto.email,
-    );
-    if (existingUserByEmail) {
-      throw new ConflictException('User with this email already exists');
-    }
-
-    const existingUserByUsername = await this.usersService.findByUsername(
-      createUserDto.username,
-    );
-    if (existingUserByUsername) {
-      throw new ConflictException('User with this username already exists');
-    }
-
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-    const user = await this.usersService.create({
-      ...createUserDto,
-      password: hashedPassword,
-    });
+    try {
+      const user = await this.usersService.create({
+        ...createUserDto,
+        password: hashedPassword,
+      });
 
-    // Remove password from response
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...result } = user;
-    return result;
+      
+      const { password, ...result } = user;
+      return result;
+    } catch (err) {
+      const code =
+        err instanceof QueryFailedError
+          ? (err as QueryFailedError & { code?: string; driverError?: { code?: string } }).code ??
+            (err as QueryFailedError & { driverError?: { code?: string } }).driverError?.code
+          : undefined;
+      if (code === PG_UNIQUE_VIOLATION) {
+        throw new ConflictException(
+          'User with this email or username already exists',
+        );
+      }
+      throw err;
+    }
   }
 
   login(user: User) {

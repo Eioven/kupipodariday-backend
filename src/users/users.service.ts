@@ -81,11 +81,14 @@ export class UsersService {
 
   async findMany(findUsersDto: FindUsersDto): Promise<User[]> {
     const { query } = findUsersDto;
+    const escaped = query.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    const searchPattern = `%${escaped}%`;
     return await this.usersRepository
       .createQueryBuilder('user')
-      .where('user.username = :query OR user.email = :query', {
-        query: query,
-      })
+      .where(
+        'user.username ILIKE :pattern OR user.email ILIKE :pattern',
+        { pattern: searchPattern },
+      )
       .getMany();
   }
 

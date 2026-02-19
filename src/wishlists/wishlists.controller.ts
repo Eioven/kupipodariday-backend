@@ -21,6 +21,7 @@ export class WishlistsController {
   constructor(private readonly wishlistsService: WishlistsService) {}
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   async findAll() {
     return await this.wishlistsService.findAll();
   }

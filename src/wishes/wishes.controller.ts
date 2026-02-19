@@ -30,13 +30,11 @@ export class WishesController {
   }
 
   @Get('last')
-  @UseGuards(JwtAuthGuard)
   async findLast() {
     return await this.wishesService.findLast();
   }
 
   @Get('top')
-  @UseGuards(JwtAuthGuard)
   async findTop() {
     return await this.wishesService.findTop();
   }
