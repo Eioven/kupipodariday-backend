@@ -23,14 +23,18 @@ export class AuthService {
         password: hashedPassword,
       });
 
-      
-      const { password, ...result } = user;
-      return result;
+      return this.usersService.toPublicUser(user);
     } catch (err) {
       const code =
         err instanceof QueryFailedError
-          ? (err as QueryFailedError & { code?: string; driverError?: { code?: string } }).code ??
-            (err as QueryFailedError & { driverError?: { code?: string } }).driverError?.code
+          ? ((
+              err as QueryFailedError & {
+                code?: string;
+                driverError?: { code?: string };
+              }
+            ).code ??
+            (err as QueryFailedError & { driverError?: { code?: string } })
+              .driverError?.code)
           : undefined;
       if (code === PG_UNIQUE_VIOLATION) {
         throw new ConflictException(
@@ -54,9 +58,7 @@ export class AuthService {
   ): Promise<Omit<User, 'password'> | null> {
     const user = await this.usersService.findByUsername(username);
     if (user && (await bcrypt.compare(pass, user.password))) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...result } = user;
-      return result;
+      return this.usersService.toPublicUser(user);
     }
     return null;
   }

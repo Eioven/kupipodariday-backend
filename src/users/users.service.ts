@@ -14,6 +14,12 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
+  toPublicUser(user: User): Omit<User, 'password'> {
+    return Object.fromEntries(
+      Object.entries(user).filter(([key]) => key !== 'password'),
+    ) as Omit<User, 'password'>;
+  }
+
   // Standard CRUD: Create
   async create(createUserDto: CreateUserDto): Promise<User> {
     const user = this.usersRepository.create(createUserDto);
@@ -81,14 +87,16 @@ export class UsersService {
 
   async findMany(findUsersDto: FindUsersDto): Promise<User[]> {
     const { query } = findUsersDto;
-    const escaped = query.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    const escaped = query
+      .replace(/\\/g, '\\\\')
+      .replace(/%/g, '\\%')
+      .replace(/_/g, '\\_');
     const searchPattern = `%${escaped}%`;
     return await this.usersRepository
       .createQueryBuilder('user')
-      .where(
-        'user.username ILIKE :pattern OR user.email ILIKE :pattern',
-        { pattern: searchPattern },
-      )
+      .where('user.username ILIKE :pattern OR user.email ILIKE :pattern', {
+        pattern: searchPattern,
+      })
       .getMany();
   }
 
